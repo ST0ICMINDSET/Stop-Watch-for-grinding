@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Study Timer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..700&family=Instrument+Sans:wght@400..700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #F3F6F4;
+    --surface: #FFFFFF;
+    --ink: #0F211C;
+    --muted: #5A6B65;
+    --line: #DCE3DF;
+    --brand: #14503F;
+    --brand-ink: #FFFFFF;
+    --track: #E1E9E5;
+    --ring: #1F8A6B;
+    --danger: #B4372F;
+    --toast-bg: #0F211C;
+    --toast-ink: #F3F6F4;
+    --font-ui: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-display: "Bricolage Grotesque", "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0C1512;
+      --surface: #131F1B;
+      --ink: #E8F0EC;
+      --muted: #93A59E;
+      --line: #24352F;
+      --brand: #3CC9A0;
+      --brand-ink: #06231B;
+      --track: #1E2E28;
+      --ring: #3CC9A0;
+      --danger: #F0837A;
+      --toast-bg: #E8F0EC;
+      --toast-ink: #0C1512;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0C1512;
+    --surface: #131F1B;
+    --ink: #E8F0EC;
+    --muted: #93A59E;
+    --line: #24352F;
+    --brand: #3CC9A0;
+    --brand-ink: #06231B;
+    --track: #1E2E28;
+    --ring: #3CC9A0;
+    --danger: #F0837A;
+    --toast-bg: #E8F0EC;
+    --toast-ink: #0C1512;
+  }
+
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  *, *::before, *::after { box-sizing: inherit; }
+  [hidden] { display: none !important; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+
+  /* ---------- Header ---------- */
+  .top {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 22px 20px 4px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .brand {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.15rem;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+  .total { color: var(--muted); font-size: .95rem; }
+  .total strong { color: var(--ink); font-weight: 600; margin-left: 6px; }
+
+  /* ---------- Layout ---------- */
+  .wrap {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 16px 20px 64px;
+    display: grid;
+    gap: 40px;
+  }
+  @media (min-width: 900px) {
+    .wrap {
+      grid-template-columns: minmax(0, 1fr) 340px;
+      gap: 72px;
+      align-items: start;
+      padding-top: 32px;
+    }
+    .log { position: sticky; top: 24px; }
+  }
+
+  .timer { width: 100%; max-width: 440px; margin: 0 auto; text-align: center; }
+
+  /* ---------- Subject ---------- */
+  .subject {
+    width: 100%;
+    border: 0;
+    border-bottom: 1.5px solid var(--line);
+    border-radius: 0;
+    background: transparent;
+    color: var(--ink);
+    text-align: center;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.4rem;
+    line-height: 1.3;
+    padding: 10px 4px;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .subject::placeholder { color: var(--muted); opacity: .75; font-weight: 500; }
+  .subject:hover { border-color: var(--muted); }
+  .subject:focus { outline: none; border-color: var(--ring); box-shadow: 0 1.5px 0 var(--ring); }
+
+  /* ---------- Dial ---------- */
+  .dial {
+    --size: min(86vw, 340px);
+    position: relative;
+    width: var(--size);
+    height: var(--size);
+    margin: 30px auto 28px;
+  }
+  .ring { width: 100%; height: 100%; transform: rotate(-90deg); display: block; }
+  .track { fill: none; stroke: var(--track); stroke-width: 6; }
+  .arc { fill: none; stroke: var(--ring); stroke-width: 6; stroke-linecap: round; }
+
+  .readout {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    text-align: center;
+  }
+
+  .digits {
+    display: flex;
+    justify-content: center;
+    align-items: baseline;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: calc(var(--size) * .14);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+  .digits .d { display: inline-block; width: .6em; text-align: center; }
+  .digits .sep { display: inline-block; width: .3em; text-align: center; color: var(--muted); }
+  .digits .main { display: inline-flex; align-items: baseline; }
+  .digits .ms { display: inline-flex; align-items: baseline; font-size: .55em; font-weight: 500; color: var(--muted); margin-left: .1em; }
+
+  .status {
+    margin: 10px 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: .95rem;
+    min-height: 1.5em;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); opacity: .5; }
+  .dot.on { background: var(--ring); opacity: 1; animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { transform: scale(.7); opacity: .55; } }
+
+  /* ---------- Time editor ---------- */
+  .edit { font-size: calc(var(--size) * .125); }
+  .fields { display: flex; align-items: flex-start; justify-content: center; gap: .18em; }
+  .field { display: grid; justify-items: center; gap: 8px; }
+  .field span { font-family: var(--font-ui); font-size: .8rem; color: var(--muted); }
+  .field input {
+    width: 1.7em;
+    height: 1.5em;
+    padding: 0;
+    text-align: center;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1em;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+  }
+  .field input:focus { border-color: var(--ring); }
+  .colon { line-height: 1.5em; color: var(--muted); font-family: var(--font-display); font-weight: 600; }
+  .edit-note { margin: 14px 0 0; font-size: .95rem; color: var(--muted); }
+
+  /* ---------- Buttons ---------- */
+  .controls { display: grid; gap: 12px; max-width: 400px; margin: 0 auto; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1.5px solid transparent;
+    border-radius: 14px;
+    font-family: var(--font-ui);
+    font-weight: 600;
+    font-size: .95rem;
+    cursor: pointer;
+    transition: filter .15s, border-color .15s, transform .1s, background-color .15s;
+  }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .btn svg.fill { fill: currentColor; stroke: none; }
+  .btn-primary { height: 58px; background: var(--brand); color: var(--brand-ink); font-size: 1.1rem; }
+  .btn-primary:hover:not(:disabled) { filter: brightness(1.1); }
+  .btn-quiet { height: 46px; background: transparent; border-color: var(--line); color: var(--ink); }
+  .btn-quiet:hover:not(:disabled) { border-color: var(--muted); }
+  .secondary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .secondary .btn { padding: 0 8px; }
+
+  /* ---------- Goal ---------- */
+  .goal {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 28px;
+  }
+  .goal-label { color: var(--muted); font-size: .9rem; margin-right: 4px; }
+  .chip {
+    height: 34px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1.5px solid var(--line);
+    background: transparent;
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-weight: 500;
+    font-size: .875rem;
+    cursor: pointer;
+    transition: background-color .15s, border-color .15s;
+  }
+  .chip:hover { border-color: var(--muted); }
+  .chip[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
+
+  /* ---------- Log ---------- */
+  .log {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 20px 20px 8px;
+  }
+  .log h2 {
+    margin: 0 0 6px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.1rem;
+    letter-spacing: -0.01em;
+  }
+  .sessions { list-style: none; margin: 0; padding: 0; }
+  .session {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 0;
+    border-top: 1px solid var(--line);
+  }
+  .s-name { font-weight: 600; overflow-wrap: anywhere; }
+  .s-meta { color: var(--muted); font-size: .85rem; }
+  .s-dur { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+  .icon-btn {
+    width: 32px; height: 32px;
+    display: grid; place-items: center;
+    border: 0; border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .icon-btn:hover { background: var(--track); color: var(--danger); }
+  .icon-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .empty { margin: 0; padding: 4px 0 20px; color: var(--muted); font-size: .95rem; line-height: 1.55; max-width: 34ch; }
+
+  /* ---------- Toast ---------- */
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    transform: translate(-50%, 16px);
+    max-width: calc(100vw - 32px);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 12px 12px 18px;
+    border-radius: 12px;
+    background: var(--toast-bg);
+    color: var(--toast-ink);
+    font-size: .95rem;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .2s, transform .2s, visibility 0s linear .2s;
+    z-index: 10;
+  }
+  .toast.show { opacity: 1; visibility: visible; transform: translate(-50%, 0); transition-delay: 0s; }
+  .toast button {
+    background: none;
+    border: 0;
+    color: inherit;
+    font: 600 .95rem var(--font-ui);
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1 class="brand">Study Timer</h1>
+  <div class="total">Logged today<strong id="todayTotal">0 min</strong></div>
+</header>
+
+<main class="wrap">
+  <section class="timer" aria-label="Stopwatch">
+    <input id="subject" class="subject" type="text" maxlength="80" autocomplete="off" spellcheck="false"
+           placeholder="What are you studying?" aria-label="What are you studying?">
+
+    <div class="dial">
+      <svg class="ring" viewBox="0 0 200 200" aria-hidden="true">
+        <circle class="track" cx="100" cy="100" r="92"/>
+        <circle id="arc" class="arc" cx="100" cy="100" r="92"/>
+      </svg>
+      <div class="readout">
+        <div id="view">
+          <div id="clock" class="digits" role="timer" aria-label="Elapsed time 0 hours 0 minutes 0 seconds"><span id="clockMain" class="main"></span><span class="ms" aria-hidden="true"><span class="sep">.</span><span id="ms0" class="d">0</span><span id="ms1" class="d">0</span><span id="ms2" class="d">0</span></span></div>
+          <p class="status"><span id="dot" class="dot"></span><span id="statusText">Ready</span></p>
+        </div>
+        <div id="editor" class="edit" hidden>
+          <div class="fields">
+            <label class="field"><input id="hh" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="Hours"><span>hr</span></label>
+            <span class="colon" aria-hidden="true">:</span>
+            <label class="field"><input id="mm" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="Minutes"><span>min</span></label>
+            <span class="colon" aria-hidden="true">:</span>
+            <label class="field"><input id="ss" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="Seconds"><span>sec</span></label>
+          </div>
+          <p class="edit-note">Set the elapsed time</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="controls" class="controls">
+      <button id="primary" class="btn btn-primary" type="button">
+        <span id="primaryIcon" aria-hidden="true"></span><span id="primaryLabel">Start</span>
+      </button>
+      <div class="secondary">
+        <button id="finish" class="btn btn-quiet" type="button" aria-label="Finish and save session">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Finish
+        </button>
+        <button id="restart" class="btn btn-quiet" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Restart
+        </button>
+        <button id="edit" class="btn btn-quiet" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>Edit time
+        </button>
+      </div>
+    </div>
+
+    <div id="editControls" class="controls" hidden>
+      <button id="saveEdit" class="btn btn-primary" type="button">Save time</button>
+      <button id="cancelEdit" class="btn btn-quiet" type="button">Cancel</button>
+    </div>
+
+    <div class="goal" role="group" aria-label="Session goal">
+      <span class="goal-label">Goal</span>
+      <button class="chip" type="button" data-goal="0" aria-pressed="true">None</button>
+      <button class="chip" type="button" data-goal="25" aria-pressed="false">25 min</button>
+      <button class="chip" type="button" data-goal="45" aria-pressed="false">45 min</button>
+      <button class="chip" type="button" data-goal="60" aria-pressed="false">1 hr</button>
+      <button class="chip" type="button" data-goal="120" aria-pressed="false">2 hr</button>
+    </div>
+  </section>
+
+  <aside class="log" aria-label="Today's sessions">
+    <h2>Today's sessions</h2>
+    <ul id="list" class="sessions"></ul>
+    <p id="empty" class="empty">No sessions yet. Press Finish when you're done studying to save your time here.</p>
+  </aside>
+</main>
+
+<div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true">
+  <span id="toastMsg"></span>
+  <button id="toastAction" type="button" hidden></button>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const KEY = 'study-stopwatch:v1';
+  const R = 92;
+  const CIRC = 2 * Math.PI * R;
+  const GOALS = [0, 25, 45, 60, 120];
+  const $ = (id) => document.getElementById(id);
+
+  const els = {
+    subject: $('subject'), clock: $('clock'), clockMain: $('clockMain'),
+    ms0: $('ms0'), ms1: $('ms1'), ms2: $('ms2'),
+    arc: $('arc'), dot: $('dot'), statusText: $('statusText'),
+    view: $('view'), editor: $('editor'), hh: $('hh'), mm: $('mm'), ss: $('ss'),
+    controls: $('controls'), editControls: $('editControls'),
+    primary: $('primary'), primaryIcon: $('primaryIcon'), primaryLabel: $('primaryLabel'),
+    finish: $('finish'), restart: $('restart'), edit: $('edit'),
+    saveEdit: $('saveEdit'), cancelEdit: $('cancelEdit'),
+    list: $('list'), empty: $('empty'), todayTotal: $('todayTotal'),
+    toast: $('toast'), toastMsg: $('toastMsg'), toastAction: $('toastAction'),
+    chips: Array.from(document.querySelectorAll('.chip'))
+  };
+
+  const ICON_PLAY = '<svg class="fill" viewBox="0 0 24 24"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5Z"/></svg>';
+  const ICON_PAUSE = '<svg class="fill" viewBox="0 0 24 24"><rect x="6" y="4" width="4.5" height="16" rx="1.2"/><rect x="13.5" y="4" width="4.5" height="16" rx="1.2"/></svg>';
+  const ICON_X = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+
+  /* ---------- State ---------- */
+  // elapsed: milliseconds banked while paused. startedAt: wall-clock timestamp while running, else null.
+  const state = { elapsed: 0, startedAt: null, subject: '', goalMin: 0, sessions: [] };
+  let editing = false;
+  let ticker = null;
+  let raf = null;
+  let lastMs = '';
+  let goalHit = false;
+  let lastClock = '';
+  let lastTitle = '';
+  let lastStatus = '';
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return;
+      const s = JSON.parse(raw);
+      if (typeof s.elapsed === 'number' && s.elapsed >= 0) state.elapsed = s.elapsed;
+      if (typeof s.startedAt === 'number') state.startedAt = s.startedAt;
+      if (typeof s.subject === 'string') state.subject = s.subject.slice(0, 80);
+      if (GOALS.includes(s.goalMin)) state.goalMin = s.goalMin;
+      if (Array.isArray(s.sessions)) {
+        state.sessions = s.sessions
+          .filter((x) => x && typeof x.ms === 'number' && typeof x.endedAt === 'number')
+          .slice(0, 200)
+          .map((x) => ({
+            id: String(x.id || x.endedAt),
+            subject: typeof x.subject === 'string' ? x.subject : '',
+            ms: x.ms,
+            endedAt: x.endedAt
+          }));
+      }
+    } catch (e) { /* storage unavailable or corrupt: start fresh */ }
+  }
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+  }
+
+  /* ---------- Helpers ---------- */
+  const isRunning = () => state.startedAt !== null;
+  const currentMs = () => state.elapsed + (isRunning() ? Math.max(0, Date.now() - state.startedAt) : 0);
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+
+  function clockString(ms) {
+    const t = Math.floor(ms / 1000);
+    return pad2(Math.floor(t / 3600)) + ':' + pad2(Math.floor(t / 60) % 60) + ':' + pad2(t % 60);
+  }
+
+  function clockHtml(str) {
+    return str.split('').map((c) => c === ':' ? '<span class="sep">:</span>' : '<span class="d">' + c + '</span>').join('');
+  }
+
+  function fmtDur(ms) {
+    const t = Math.floor(ms / 1000);
+    const h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, s = t % 60;
+    if (h > 0) return h + ' hr ' + m + ' min';
+    if (m > 0) return m + ' min ' + pad2(s) + ' sec';
+    return s + ' sec';
+  }
+
+  function fmtTotal(ms) {
+    const m = Math.floor(ms / 60000);
+    if (m === 0) return ms > 0 ? 'under 1 min' : '0 min';
+    const h = Math.floor(m / 60);
+    return h > 0 ? h + ' hr ' + (m % 60) + ' min' : m + ' min';
+  }
+
+  function fmtLeft(ms) {
+    const secs = Math.ceil(ms / 1000);
+    const mins = Math.ceil(secs / 60);
+    if (secs > 60 * 60 - 1) return Math.floor(mins / 60) + ' hr' + (mins % 60 ? ' ' + (mins % 60) + ' min' : '');
+    if (secs >= 60) return mins + ' min';
+    return secs + ' sec';
+  }
+
+  function fmtGoal(min) { return min >= 60 ? (min / 60) + ' hr' : min + ' min'; }
+
+  /* ---------- Toast ---------- */
+  let toastTimer = null;
+  let toastRun = null;
+
+  function showToast(msg, action) {
+    clearTimeout(toastTimer);
+    toastRun = action ? action.run : null;
+    els.toastMsg.textContent = msg;
+    els.toastAction.hidden = !action;
+    if (action) els.toastAction.textContent = action.label;
+    els.toast.classList.add('show');
+    toastTimer = setTimeout(hideToast, action ? 7000 : 3500);
+  }
+
+  function hideToast() {
+    els.toast.classList.remove('show');
+    toastRun = null;
+  }
+
+  els.toastAction.addEventListener('click', () => {
+    const run = toastRun;
+    hideToast();
+    if (run) run();
+  });
+
+  /* ---------- Painting ---------- */
+  function paint() {
+    const t = currentMs();
+    const running = isRunning();
+    const goalMs = state.goalMin * 60000;
+
+    const str = clockString(t);
+    if (str !== lastClock) {
+      lastClock = str;
+      els.clockMain.innerHTML = clockHtml(str);
+      const secs = Math.floor(t / 1000);
+      els.clock.setAttribute('aria-label',
+        'Elapsed time ' + Math.floor(secs / 3600) + ' hours ' + (Math.floor(secs / 60) % 60) + ' minutes ' + (secs % 60) + ' seconds');
+    }
+
+    const msStr = String(Math.floor(t % 1000)).padStart(3, '0');
+    if (msStr !== lastMs) {
+      lastMs = msStr;
+      els.ms0.textContent = msStr[0];
+      els.ms1.textContent = msStr[1];
+      els.ms2.textContent = msStr[2];
+    }
+
+    const title = running ? str + ' - Study Timer' : 'Study Timer';
+    if (title !== lastTitle) { lastTitle = title; document.title = title; }
+
+    const p = goalMs > 0 ? Math.min(1, t / goalMs) : (t % 60000) / 60000;
+    els.arc.style.strokeDasharray = String(CIRC);
+    els.arc.style.strokeDashoffset = String(CIRC * (1 - p));
+    els.arc.style.opacity = p > 0 ? '1' : '0';
+
+    const reached = goalMs > 0 && t >= goalMs;
+    if (reached && !goalHit && running) showToast('Goal reached: ' + fmtGoal(state.goalMin));
+    goalHit = reached;
+
+    let text;
+    const base = running ? 'Studying' : (t === 0 ? 'Ready' : 'Paused');
+    if (reached) text = 'Goal reached';
+    else if (goalMs > 0) text = base + ', ' + fmtLeft(goalMs - t) + ' to go';
+    else text = base;
+    if (text !== lastStatus) { lastStatus = text; els.statusText.textContent = text; }
+    els.dot.classList.toggle('on', running);
+
+    els.finish.disabled = editing || t < 1000;
+    els.restart.disabled = editing || (t === 0 && !running);
+  }
+
+  function renderSessions() {
+    const today = new Date().toDateString();
+    const todays = state.sessions.filter((s) => new Date(s.endedAt).toDateString() === today);
+
+    els.list.replaceChildren(...todays.map((s) => {
+      const li = document.createElement('li');
+      li.className = 'session';
+
+      const info = document.createElement('div');
+      const name = document.createElement('div');
+      name.className = 's-name';
+      name.textContent = s.subject || 'Study session';
+      const meta = document.createElement('div');
+      meta.className = 's-meta';
+      meta.textContent = 'Finished ' + new Date(s.endedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      info.append(name, meta);
+
+      const dur = document.createElement('div');
+      dur.className = 's-dur';
+      dur.textContent = fmtDur(s.ms);
+
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'icon-btn';
+      del.setAttribute('aria-label', 'Delete session');
+      del.innerHTML = ICON_X;
+      del.addEventListener('click', () => deleteSession(s.id));
+
+      li.append(info, dur, del);
+      return li;
+    }));
+
+    els.empty.hidden = todays.length > 0;
+    els.todayTotal.textContent = fmtTotal(todays.reduce((sum, s) => sum + s.ms, 0));
+  }
+
+  function render() {
+    const running = isRunning();
+
+    els.controls.hidden = editing;
+    els.editControls.hidden = !editing;
+    els.view.hidden = editing;
+    els.editor.hidden = !editing;
+
+    els.primaryLabel.textContent = running ? 'Pause' : (state.elapsed > 0 ? 'Resume' : 'Start');
+    els.primaryIcon.innerHTML = running ? ICON_PAUSE : ICON_PLAY;
+
+    els.chips.forEach((chip) => chip.setAttribute('aria-pressed', String(Number(chip.dataset.goal) === state.goalMin)));
+    if (els.subject.value !== state.subject) els.subject.value = state.subject;
+
+    renderSessions();
+    paint();
+
+    if (running && !ticker) {
+      ticker = setInterval(paint, 500); // keeps the tab title current when the tab is in the background
+      const loop = () => { paint(); raf = requestAnimationFrame(loop); };
+      raf = requestAnimationFrame(loop);
+    }
+    if (!running && ticker) {
+      clearInterval(ticker); ticker = null;
+      cancelAnimationFrame(raf); raf = null;
+    }
+  }
+
+  /* ---------- Actions ---------- */
+  function start() {
+    if (isRunning() || editing) return;
+    state.startedAt = Date.now();
+    save(); render();
+  }
+
+  function pause() {
+    if (!isRunning()) return;
+    state.elapsed = currentMs();
+    state.startedAt = null;
+    save(); render();
+  }
+
+  function toggle() { isRunning() ? pause() : start(); }
+
+  function finish() {
+    const t = currentMs();
+    if (editing || t < 1000) return;
+    state.sessions.unshift({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      subject: state.subject.trim(),
+      ms: t,
+      endedAt: Date.now()
+    });
+    state.sessions = state.sessions.slice(0, 200);
+    state.elapsed = 0;
+    state.startedAt = null;
+    save(); render();
+    els.primary.focus();
+    showToast('Session saved: ' + fmtDur(t));
+  }
+
+  function restart() {
+    const t = currentMs();
+    const wasRunning = isRunning();
+    if (editing || (t === 0 && !wasRunning)) return;
+    state.elapsed = 0;
+    state.startedAt = wasRunning ? Date.now() : null;
+    save(); render();
+    els.primary.focus();
+    showToast('Stopwatch restarted', {
+      label: 'Undo',
+      run() {
+        state.elapsed = t;
+        state.startedAt = wasRunning ? Date.now() : null;
+        save(); render();
+      }
+    });
+  }
+
+  function deleteSession(id) {
+    const removed = state.sessions.find((s) => s.id === id);
+    if (!removed) return;
+    state.sessions = state.sessions.filter((s) => s.id !== id);
+    save(); renderSessions();
+    showToast('Session deleted', {
+      label: 'Undo',
+      run() {
+        state.sessions.push(removed);
+        state.sessions.sort((a, b) => b.endedAt - a.endedAt);
+        save(); renderSessions();
+      }
+    });
+  }
+
+  function openEdit() {
+    if (editing) return;
+    if (isRunning()) pause();
+    const t = Math.floor(currentMs() / 1000);
+    els.hh.value = pad2(Math.floor(t / 3600));
+    els.mm.value = pad2(Math.floor(t / 60) % 60);
+    els.ss.value = pad2(t % 60);
+    editing = true;
+    render();
+    els.hh.focus();
+    els.hh.select();
+  }
+
+  function saveEdit() {
+    const h = clamp(parseInt(els.hh.value, 10) || 0, 0, 99);
+    const m = clamp(parseInt(els.mm.value, 10) || 0, 0, 59);
+    const s = clamp(parseInt(els.ss.value, 10) || 0, 0, 59);
+    state.elapsed = (h * 3600 + m * 60 + s) * 1000;
+    state.startedAt = null;
+    editing = false;
+    save(); render();
+    els.edit.focus();
+  }
+
+  function cancelEdit() {
+    editing = false;
+    render();
+    els.edit.focus();
+  }
+
+  /* ---------- Wiring ---------- */
+  els.primary.addEventListener('click', toggle);
+  els.finish.addEventListener('click', finish);
+  els.restart.addEventListener('click', restart);
+  els.edit.addEventListener('click', openEdit);
+  els.saveEdit.addEventListener('click', saveEdit);
+  els.cancelEdit.addEventListener('click', cancelEdit);
+
+  els.subject.addEventListener('input', () => { state.subject = els.subject.value; save(); });
+  els.subject.addEventListener('keydown', (e) => { if (e.key === 'Enter') els.subject.blur(); });
+
+  els.chips.forEach((chip) => chip.addEventListener('click', () => {
+    state.goalMin = Number(chip.dataset.goal);
+    save(); render();
+  }));
+
+  [els.hh, els.mm, els.ss].forEach((input, i) => {
+    const max = [99, 59, 59][i];
+    input.addEventListener('input', () => { input.value = input.value.replace(/\D/g, '').slice(0, 2); });
+    input.addEventListener('focus', () => input.select());
+    input.addEventListener('mouseup', (e) => e.preventDefault());
+    input.addEventListener('blur', () => { input.value = pad2(clamp(parseInt(input.value, 10) || 0, 0, max)); });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
+      else if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
+      else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = clamp((parseInt(input.value, 10) || 0) + (e.key === 'ArrowUp' ? 1 : -1), 0, max);
+        input.value = pad2(next);
+        input.select();
+      }
+    });
+  });
+
+  // Space starts or pauses when nothing else has focus.
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && e.target === document.body && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey && !editing) {
+      e.preventDefault();
+      toggle();
+    }
+  });
+
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { renderSessions(); paint(); } });
+
+  /* ---------- Init ---------- */
+  load();
+  render();
+})();
+</script>
+</body>
+</html>
